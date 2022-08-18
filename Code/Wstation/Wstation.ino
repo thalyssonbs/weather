@@ -55,7 +55,7 @@ void setup() {
   dht.begin();
   rtc.begin();
   timeClient.begin();
-  timeClient.setTimeOffset(-14400);   // Configura o fuso horário do serviço NTP (segundos)
+  timeClient.setTimeOffset(-14400);
   dataHora();
 
   /* Sincroniza o RTC com o servidor NTP, caso tenha sido desconfigurado */  
@@ -72,7 +72,6 @@ void setup() {
                   Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
                   Adafruit_BMP280::FILTER_X16,      /* Filtering. */
                   Adafruit_BMP280::STANDBY_MS_500); /* Standby time. */
-  /**/
 
   Wire.begin();
   SD.begin(15);
@@ -90,9 +89,8 @@ void setup() {
   ESP.rtcUserMemoryWrite(sizeof(marker), &reboots, sizeof(reboots));
   Serial.println("");
   Serial.printf("Boot número: %d\r\n", reboots);
-}
 
-void loop() {
+
   if (reboots > 1) {
     logBook += ("BOOT=" + String(reboots));
 
@@ -111,29 +109,6 @@ void loop() {
     float Temperatura = b[0];
     float Pressao = (b[1]/100);
     double bat = battery();
-  
-    /* Exibição das medidas no Serial */
-    // Serial.print("PM 1.0 (ug/m3): ");
-    // Serial.println(p[0]);
-    // Serial.print("PM 2.5 (ug/m3): ");
-    // Serial.println(p[1]);
-    // Serial.print("PM 10.0 (ug/m3): ");
-    // Serial.println(p[2]);
-    // Serial.print(F("Temperatura DHT: "));
-    // Serial.print(d[0]);
-    // Serial.println(F("°C"));
-    // Serial.print(F("Temperatura BMP = "));
-    // Serial.print(b[0]);
-    // Serial.println(" °C");
-    // Serial.print(F("Umidade Relativa: "));
-    // Serial.print(d[1]);
-    // Serial.println(F("%"));
-    // Serial.print(F("Pressão Atmosférica = "));
-    // Serial.print(b[1]);
-    // Serial.println(" Pa");
-    // Serial.print(F("Altitude Aproximada = "));
-    // Serial.print(b[2]);
-    // Serial.println(" m");
   
     /* Coleta e imprime data e hora */
     int* horaCerta = dataHora();
@@ -202,4 +177,7 @@ void loop() {
   Serial.println(String(segSono) + " segundos...");
   pms.sleep();
   ESP.deepSleep((tempoSono-30)*1e6);
+  
 }
+
+void loop() {}
