@@ -1,3 +1,7 @@
+/*
+ * The timeNTP() function get the real time data from NTP server and return the formatted values separately.
+ */
+
 int * timeNTP() {
 
   Serial.println("Iniciando sincronização automática do relógio!");

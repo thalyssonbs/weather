@@ -1,3 +1,8 @@
+/*
+ * The gravarSD() function save the last data in a file on SD card.
+ * The gravarLog() function save the log string in a separate file on SD card.
+ */
+
 void gravarSD(String dados) {
   File dataFile = SD.open("dados.csv", FILE_WRITE);
   if (dataFile) {

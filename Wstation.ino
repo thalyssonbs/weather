@@ -1,6 +1,5 @@
 #include <ThingSpeak.h>
 #include <ESP8266WiFi.h>
-//#include <ESP8266WiFiMulti.h>
 #include <SD.h>
 #include <SPI.h>
 #include "PMS.h"
@@ -15,30 +14,15 @@
 #include <WiFiUdp.h>
 #include "Secrets.h"
 
-int medidasHora = 6;    // Número de medidas por hora
-String logBook;
-
-/* Cliente NTP */
-WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP);
-
-/* Contador de reboots */
-#define RTC_MARKER 0x1234
-unsigned int marker = 0;
-unsigned int reboots = 0;
-
-/* WiFi */
-WiFiClient client;
-//ESP8266WiFiMulti wifiMulti;
-const uint32_t connectTimeoutMs = 5000;
+int medidasHora = 6;    // Measures per hour
 
 /* PMS */
 SoftwareSerial mySerial(0, 2); // RX=D3, TX=D4
 PMS pms(mySerial);
 
-
-/* RTC */ 
-RTC_DS3231 rtc;
+/* WiFi */
+WiFiClient client;
+const uint32_t connectTimeoutMs = 5000;
 
 /* DHT11 */
 #define DHTPIN 10
@@ -47,6 +31,20 @@ DHT_Unified dht(DHTPIN, DHTTYPE);
 
 /* BMP280 */
 Adafruit_BMP280 bmp;
+
+/* Cliente NTP */
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP);
+
+/* RTC */ 
+RTC_DS3231 rtc;
+
+/* Reboot counter */
+#define RTC_MARKER 0x1234
+unsigned int marker = 0;
+unsigned int reboots = 0;
+
+String logBook;
 
 void setup() {
   Serial.begin(115200);

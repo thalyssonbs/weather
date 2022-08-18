@@ -1,5 +1,8 @@
+/*
+ * The transmitirDados() function send the data to ThingSpeak server.
+ */
+
 void transmitirDados(int PM10, int PM25, int PM100, float Temperatura, int Umidade, float Pressao, float bat) {
-  
 
   unsigned long myChannelNumber = SECRET_CH_ID;
   const char * myWriteAPIKey = SECRET_WRITE_APIKEY;

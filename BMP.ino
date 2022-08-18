@@ -1,3 +1,6 @@
+/*
+ * The bmpDados() function get and return temperature and atmosphere pressure data from BMP280 sensor.
+ */
 double * bmpDados() {
   if (bmp.takeForcedMeasurement()) {
     double temperatura = bmp.readTemperature();

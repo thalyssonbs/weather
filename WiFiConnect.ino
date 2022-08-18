@@ -1,6 +1,9 @@
+/*
+ * The verifWifi() function checks the WiFi connection and tries to reconnect for 30 seconds.
+ */
+
 bool verifWifi() {
-
-
+  
   const char* ssid     = STASSID;
   const char* password = STAPSK;
   unsigned long tConnect;

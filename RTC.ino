@@ -1,3 +1,7 @@
+/*
+ * The dataHora() function get the real time data from the RTC module and return the data separately.
+ */
+
 int * dataHora() {
 
   char daysOfTheWeek[7][12] = {"Domingo", "Segunda", "Terca", "Quarta", "Quinta", "Sexta", "Sabado"};

@@ -1,3 +1,7 @@
+/*
+ * The pmSensor() function read and return the particulate matter values from the PMS7003 sensor.
+ */
+
 int * pmSensor() {
 
   PMS::DATA data;

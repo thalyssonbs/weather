@@ -1,3 +1,9 @@
+/*
+ * The dhtDados() function read and return humidity and temperature data from the DHT11 sensor.
+ * Note that the reading process is repeating due an error in reply from DHT at first read.
+ * Adjust needed after sensor replacement.
+ */
+
 double * dhtDados() {
   double umid;
   sensors_event_t event;
