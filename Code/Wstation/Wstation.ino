@@ -58,7 +58,7 @@ void setup() {
   timeClient.setTimeOffset(-14400);
   dataHora();
 
-  /* Sincroniza o RTC com o servidor NTP, caso tenha sido desconfigurado */  
+  /* If the RTC was lost power sync real time from NTP again. */  
   if (rtc.lostPower()) {
     int* NT = timeNTP();
     rtc.adjust(DateTime(NT[0], NT[1], NT[2], NT[3], NT[4], NT[5]));
