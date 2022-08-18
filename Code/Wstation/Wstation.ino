@@ -91,7 +91,7 @@ void setup() {
   Serial.printf("Boot número: %d\r\n", reboots);
 
 
-  if (reboots > 1) {
+  if (reboots > 1) { /* Only run this function if not is the first boot after power on. */
     logBook += ("BOOT=" + String(reboots));
 
     /* Coleta medidas do sensor PMS */
