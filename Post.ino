@@ -1,7 +1,6 @@
 void transmitirDados(int PM10, int PM25, int PM100, float Temperatura, int Umidade, float Pressao, float bat) {
   
-  #define SECRET_CH_ID 1485261
-  #define SECRET_WRITE_APIKEY "GRD2MLCD6WIH6FY4"
+
   unsigned long myChannelNumber = SECRET_CH_ID;
   const char * myWriteAPIKey = SECRET_WRITE_APIKEY;
 

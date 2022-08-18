@@ -13,6 +13,7 @@
 #include <DHT_U.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
+#include "Secrets.h"
 
 int medidasHora = 6;    // Número de medidas por hora
 String logBook;
