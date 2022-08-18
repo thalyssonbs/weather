@@ -1,0 +1,206 @@
+#include <ThingSpeak.h>
+#include <ESP8266WiFi.h>
+//#include <ESP8266WiFiMulti.h>
+#include <SD.h>
+#include <SPI.h>
+#include "PMS.h"
+#include <SoftwareSerial.h>
+#include <Adafruit_BMP280.h>
+#include <Wire.h>
+#include "RTClib.h"
+#include <Adafruit_Sensor.h>
+#include <DHT.h>
+#include <DHT_U.h>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
+
+int medidasHora = 6;    // Número de medidas por hora
+String logBook;
+
+/* Cliente NTP */
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP);
+
+/* Contador de reboots */
+#define RTC_MARKER 0x1234
+unsigned int marker = 0;
+unsigned int reboots = 0;
+
+/* WiFi */
+WiFiClient client;
+//ESP8266WiFiMulti wifiMulti;
+const uint32_t connectTimeoutMs = 5000;
+
+/* PMS */
+SoftwareSerial mySerial(0, 2); // RX=D3, TX=D4
+PMS pms(mySerial);
+
+
+/* RTC */ 
+RTC_DS3231 rtc;
+
+/* DHT11 */
+#define DHTPIN 10
+#define DHTTYPE    DHT11 
+DHT_Unified dht(DHTPIN, DHTTYPE);
+
+/* BMP280 */
+Adafruit_BMP280 bmp;
+
+void setup() {
+  Serial.begin(115200);
+  mySerial.begin(9600);
+  delay(2000);
+  Serial.println("");
+  ThingSpeak.begin(client);
+  dht.begin();
+  rtc.begin();
+  timeClient.begin();
+  timeClient.setTimeOffset(-14400);   // Configura o fuso horário do serviço NTP (segundos)
+  dataHora();
+
+  /* Sincroniza o RTC com o servidor NTP, caso tenha sido desconfigurado */  
+  if (rtc.lostPower()) {
+    int* NT = timeNTP();
+    rtc.adjust(DateTime(NT[0], NT[1], NT[2], NT[3], NT[4], NT[5]));
+    Serial.println("Relógio sincronizado com o servidor NTP.");
+  }  
+
+  /* Inicia e configura o sensor BMP280 */
+  bmp.begin();
+  bmp.setSampling(Adafruit_BMP280::MODE_FORCED,     /* Operating Mode. */
+                  Adafruit_BMP280::SAMPLING_X2,     /* Temp. oversampling */
+                  Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
+                  Adafruit_BMP280::FILTER_X16,      /* Filtering. */
+                  Adafruit_BMP280::STANDBY_MS_500); /* Standby time. */
+  /**/
+
+  Wire.begin();
+  SD.begin(15);
+
+  /* Verifica e registra o número de reboots após energizado */
+  ESP.rtcUserMemoryRead(0, &marker, sizeof(marker));
+  if (marker != RTC_MARKER) {
+    marker = RTC_MARKER;
+    reboots = 0;
+    ESP.rtcUserMemoryWrite(0, &marker,sizeof(marker));
+  } else {
+    ESP.rtcUserMemoryRead(sizeof(marker), &reboots, sizeof(reboots));
+  }
+  reboots++;
+  ESP.rtcUserMemoryWrite(sizeof(marker), &reboots, sizeof(reboots));
+  Serial.println("");
+  Serial.printf("Boot número: %d\r\n", reboots);
+}
+
+void loop() {
+  if (reboots > 1) {
+    logBook += ("BOOT=" + String(reboots));
+
+    /* Coleta medidas do sensor PMS */
+    int* p = pmSensor();
+    int PM10 = p[0];
+    int PM25 = p[1];
+    int PM100 = p[2];
+
+    /* Coleta medidas do sensor DHT */
+    double* d = dhtDados();
+    int Umidade = d[1];
+
+    /* Coleta medidas do sensor BMP */
+    double* b = bmpDados();
+    float Temperatura = b[0];
+    float Pressao = (b[1]/100);
+    double bat = battery();
+  
+    /* Exibição das medidas no Serial */
+    // Serial.print("PM 1.0 (ug/m3): ");
+    // Serial.println(p[0]);
+    // Serial.print("PM 2.5 (ug/m3): ");
+    // Serial.println(p[1]);
+    // Serial.print("PM 10.0 (ug/m3): ");
+    // Serial.println(p[2]);
+    // Serial.print(F("Temperatura DHT: "));
+    // Serial.print(d[0]);
+    // Serial.println(F("°C"));
+    // Serial.print(F("Temperatura BMP = "));
+    // Serial.print(b[0]);
+    // Serial.println(" °C");
+    // Serial.print(F("Umidade Relativa: "));
+    // Serial.print(d[1]);
+    // Serial.println(F("%"));
+    // Serial.print(F("Pressão Atmosférica = "));
+    // Serial.print(b[1]);
+    // Serial.println(" Pa");
+    // Serial.print(F("Altitude Aproximada = "));
+    // Serial.print(b[2]);
+    // Serial.println(" m");
+  
+    /* Coleta e imprime data e hora */
+    int* horaCerta = dataHora();
+
+    /* Concatena e grava as medidas no cartão Micro SD */
+    String writSD = (String(p[0]) + "," + 
+                    String(p[1]) + "," + 
+                    String(p[2]) + "," + 
+                    String(d[0]) + "," + 
+                    String(b[0]) + "," + 
+                    String(horaCerta[7]) + "," + 
+                    String(d[1]) + "," + 
+                    String(b[1]) + "," +
+                    String(horaCerta[2]) + "/" + 
+                    String(horaCerta[1]) + "/" + 
+                    String(horaCerta[0]) + "," + 
+                    String(horaCerta[4]) + ":" + 
+                    String(horaCerta[5]) + ":" + 
+                    String(horaCerta[6]) + "," + 
+                    String(bat));
+    gravarSD(writSD);
+
+    /* Conecta na rede WiFi e transmite os dados para a internet */
+    if (verifWifi()) {
+      logBook += ",WIFI=OK";
+      transmitirDados(PM10, PM25, PM100, Temperatura, Umidade, Pressao, bat);
+    }
+    else {
+      Serial.println("Sem conexão com a internet. Dados não transmitidos.");
+      logBook += ",WIFI=ERRO,POST=ERRO";
+    }
+
+    /* Concatena e grava o Log no cartão Micro SD */
+    logBook += "--" + 
+              String(horaCerta[2]) + "/" + 
+              String(horaCerta[1]) + "/" + 
+              String(horaCerta[0]) + "-" + 
+              String(horaCerta[4]) + ":" + 
+              String(horaCerta[5]) + ":" + 
+              String(horaCerta[6]);
+    gravarLog(logBook);
+  }
+
+  /* Coleta a hora atual */
+  int* horaCerta = dataHora();
+  int minuto = horaCerta[5];
+  int segundos = horaCerta[6];
+  Serial.println("");
+  delay(200);
+
+  /* Calcula o tempo de suspensão até a próxima medida */
+  float intervalo = 60 / medidasHora;
+  float tempoSono = ((intervalo*60)-(60*minuto + segundos));
+  while (tempoSono < 0) {
+    tempoSono = tempoSono + (intervalo*60);
+  }
+
+  /* Suspende o módulo ESP */
+  
+  Serial.print("Entrando em suspensão por ");
+  if (int(tempoSono/60) != 0) {
+    int minSono = tempoSono/60;
+    Serial.print(String(minSono) + " minutos e ");
+  }
+  int segSono = ((tempoSono/60)-(int(tempoSono/60)))*60;
+  Serial.println(String(segSono) + " segundos...");
+  pms.sleep();
+  ESP.deepSleep((tempoSono-30)*1e6);
+}
