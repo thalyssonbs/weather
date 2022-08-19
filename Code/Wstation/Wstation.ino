@@ -182,12 +182,10 @@ void setup() {
 
 void loop() {}
 
-
-/*
- * The verifWifi() function checks the WiFi connection and tries to reconnect for 30 seconds.
- */
-
 bool verifWifi() {
+  /*
+    * The verifWifi() function checks the WiFi connection and tries to reconnect for 30 seconds.
+  */
   
   const char* ssid     = STASSID;
   const char* password = STAPSK;
@@ -201,9 +199,7 @@ bool verifWifi() {
     Serial.print("Tentando se conectar à rede ");
     Serial.println(ssid);
     tConnect = millis();
-    //WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, password);
-    //wifiMulti.run(connectTimeoutMs);
     while (WiFi.status() != WL_CONNECTED && millis()-tConnect < 30000) {
       delay(500);
       Serial.print(".");
@@ -230,4 +226,252 @@ bool verifWifi() {
     Serial.println("WiFi conectado!");
     return true;
   }
+}
+
+int * dataHora() {
+  /*
+   * The dataHora() function get the real time data from the RTC module and return the data separately.
+  */
+
+  char daysOfTheWeek[7][12] = {"Domingo", "Segunda", "Terca", "Quarta", "Quinta", "Sexta", "Sabado"};
+  DateTime now = rtc.now();
+  int ano = (now.year());
+  int mes = (now.month());
+  int dia = (now.day());
+  String diaSemana = (daysOfTheWeek[now.dayOfTheWeek()]);
+  int hora = (now.hour());
+  int minuto = (now.minute());
+  int segundo = (now.second());
+  double tempRTC = (rtc.getTemperature());
+
+  static int r[8];
+  r[0] = ano;
+  r[1] = mes;
+  r[2] = dia;
+  r[4] = hora;
+  r[5] = minuto;
+  r[6] = segundo;
+  r[7] = tempRTC;  
+
+  Serial.print(dia);
+  Serial.print('/');
+  Serial.print(mes);
+  Serial.print('/');
+  Serial.print(ano);
+  Serial.print(' ');
+  Serial.print(diaSemana);
+  Serial.print(' ');
+  Serial.print(hora);
+  Serial.print(':');
+  Serial.print(minuto);
+  Serial.print(':');
+  Serial.print(segundo);
+  Serial.println();
+
+  return r;
+}
+
+void gravarSD(String dados) {
+  /*
+    * The gravarSD() function save the last data in a file on SD card.
+    * The gravarLog() function save the log string in a separate file on SD card.
+  */
+  File dataFile = SD.open("dados.csv", FILE_WRITE);
+  if (dataFile) {
+    dataFile.println(dados);
+    dataFile.close();
+    logBook += ",SD=OK";
+    Serial.println("Dados gravados no cartão Micro SD!");
+    Serial.println(dados);
+  }
+  else {
+    Serial.println("Erro ao abrir arquivo.");
+    logBook += ",SD=ERRO";
+  }
+}
+
+void gravarLog(String dados) {
+  File dataFile = SD.open("Log.txt", FILE_WRITE);
+  if (dataFile) {
+    dataFile.println(dados);
+    dataFile.close();
+    Serial.println("Log registrado!");
+    Serial.println(dados);
+  }
+  else {
+    Serial.println("Erro ao abrir arquivo de log.");
+  }
+}
+
+void transmitirDados(int PM10, int PM25, int PM100, float Temperatura, int Umidade, float Pressao, float bat) {
+  /*
+    * The transmitirDados() function send the data to ThingSpeak server.
+  */
+  unsigned long myChannelNumber = SECRET_CH_ID;
+  const char * myWriteAPIKey = SECRET_WRITE_APIKEY;
+
+  ThingSpeak.setField(1, PM10);
+  ThingSpeak.setField(2, PM25);
+  ThingSpeak.setField(3, PM100);
+  if (Temperatura != 0) {
+    ThingSpeak.setField(4, Temperatura);
+  }
+  if (Umidade != 0){
+    ThingSpeak.setField(5, Umidade);
+  }
+  if (Pressao != 0) {
+    ThingSpeak.setField(6, Pressao);
+  }
+  ThingSpeak.setField(7, bat);
+  
+  
+  int x = ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
+  if(x == 200){
+    Serial.println("Transmissão concluída.");
+    logBook += ",POST=OK";
+  }
+  else{
+    Serial.println("Erro na transmissão dos dados. Código de erro HTTP " + String(x));
+    logBook += ",POST=ERRO";
+  }
+}
+
+int * pmSensor() {
+  /*
+    * The pmSensor() function read and return the particulate matter values from the PMS7003 sensor.
+  */
+
+  PMS::DATA data;
+  pms.passiveMode();
+  Serial.println(F("Estabilizando sensor... Aguarde!"));
+  pms.wakeUp();
+  delay(60000);
+  pms.requestRead();
+
+  if (pms.readUntil(data))
+  {
+    int pm10 = data.PM_AE_UG_1_0;
+    int pm25 = data.PM_AE_UG_2_5;
+    int pm100 = data.PM_AE_UG_10_0;
+    static int r[3];
+    r[0] = pm10;
+    r[1] = pm25;
+    r[2] = pm100;
+    pms.sleep();
+    logBook += ",PMS=OK";
+    return r;
+  }
+  else
+  {
+    Serial.println("Sem dados.");
+    logBook += ",PMS=ERRO";
+    pms.sleep();
+  }
+}
+
+int * timeNTP() {
+  /*
+    * The timeNTP() function get the real time data from NTP server and return the formatted values separately.
+  */
+
+  Serial.println("Iniciando sincronização automática do relógio!");
+  String formattedDate;
+  String dayStamp;
+  String timeStamp;
+  
+  if (verifWifi()) {
+    timeClient.begin();
+    timeClient.setTimeOffset(-14400);
+    timeClient.update();
+    int hour = timeClient.getHours();
+    int minute = timeClient.getMinutes();
+    int second = timeClient.getSeconds();
+    time_t epochTime = timeClient.getEpochTime();
+    struct tm *ptm = gmtime ((time_t *)&epochTime);
+    int monthDay = ptm->tm_mday;
+    int currentMonth = ptm->tm_mon+1;
+    int currentYear = ptm->tm_year+1900;
+
+    static int r[6];
+    r[0] = currentYear;
+    r[1] = currentMonth;
+    r[2] = monthDay;
+    r[3] = int(hour);
+    r[4] = int(minute);
+    r[5] = int(second);
+
+    return r;
+  }
+}
+
+double * dhtDados() {
+  /*
+    * The dhtDados() function read and return humidity and temperature data from the DHT11 sensor.
+    * Note that the reading process is repeating due an error in reply from DHT at first read.
+    * Adjust needed after sensor replacement.
+  */
+  double umid;
+  sensors_event_t event;
+  dht.temperature().getEvent(&event);
+  double temp1 = event.temperature;
+  dht.humidity().getEvent(&event);
+  if (isnan(event.relative_humidity)) {
+    umid = NULL;
+  }
+  else {
+    umid = event.relative_humidity;
+  }
+  delay(2000);
+
+  /* Repetindo o código para evitar o erro de leitura */
+  dht.temperature().getEvent(&event);
+  temp1 = event.temperature;
+  dht.humidity().getEvent(&event);
+  if (isnan(event.relative_humidity)) {
+    umid = NULL;
+    logBook += ",DHT=ERRO";
+  }
+  else {
+    umid = event.relative_humidity;
+    logBook += ",DHT=OK";
+  }
+
+  static double r[2];
+  r[0] = temp1;
+  r[1] = umid;
+  return r;
+}
+
+double * bmpDados() {
+  /*
+    * The bmpDados() function get and return temperature and atmosphere pressure data from BMP280 sensor.
+  */
+  if (bmp.takeForcedMeasurement()) {
+    double temperatura = bmp.readTemperature();
+    double pressao = bmp.readPressure();
+    double alt = bmp.readAltitude(1013.25);
+    static double r[3];
+    r[0] = temperatura;
+    r[1] = pressao;
+    r[2] = alt;
+    logBook += ",BMP=OK";
+    return r;
+    }
+    else {
+    Serial.println("Falha no sensor BMP!");
+    logBook += ",BMP=ERRO";
+  }
+}
+
+double battery() {
+  /*
+    * The battery() function read the ADC input and calculate the battery voltage and return the value.
+  */
+
+  double sensorValue = analogRead(A0);
+  double voltage = sensorValue * 0.0167;
+  Serial.println(sensorValue);
+  Serial.println(voltage);
+  return voltage;
+
 }
