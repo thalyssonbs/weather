@@ -138,7 +138,7 @@ void setup() {
     }
     else {
       Serial.println("Sem conexão com a internet. Dados não transmitidos.");
-      logBook += ",WIFI=ERRO,POST=ERRO";
+      logBook += ",WIFI=ERRO,POST=ERRO:WIFI";
     }
 
     /* Concatena e grava o Log no cartão Micro SD */
@@ -200,7 +200,7 @@ bool verifWifi() {
     Serial.println(ssid);
     tConnect = millis();
     WiFi.begin(ssid, password);
-    while (WiFi.status() != WL_CONNECTED && millis()-tConnect < 30000) {
+    while (WiFi.status() != WL_CONNECTED && millis()-tConnect < 60000) {
       delay(500);
       Serial.print(".");
     }
@@ -332,7 +332,7 @@ void transmitirDados(int PM10, int PM25, int PM100, float Temperatura, int Umida
   }
   else{
     Serial.println("Erro na transmissão dos dados. Código de erro HTTP " + String(x));
-    logBook += ",POST=ERRO";
+    logBook += (",POST=ERRO:"+String(x));
   }
 }
 
@@ -469,7 +469,7 @@ double battery() {
   */
 
   double sensorValue = analogRead(A0);
-  double voltage = sensorValue * 0.0167;
+  double voltage = sensorValue * 0.0167; // Factor of correction by voltage divider at ADC
   Serial.println(sensorValue);
   Serial.println(voltage);
   return voltage;
