@@ -1,5 +1,5 @@
 # Weather Station UNIR (under maintenance)
-    Prototype of an automatic weather station able to measure temperature, humidity, air pressure and particulate matter parameters, sending all data to ThingSpeak server.
+Prototype of an automatic weather station able to measure temperature, humidity, air pressure and particulate matter parameters, sending all data to ThingSpeak server.
 
 The device is installed at Federal University of Rondônia Foundation's Campus and collect the environment's measures every minute, stores in a SD card and sends to a ThingSpeak server.
 ![Alt text](Img/station.png)
